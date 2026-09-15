@@ -84,7 +84,7 @@ export default function Home() {
         )}
 
         {status === "result" && result && (
-          <div className="border-t border-[var(--border)] pt-8">
+          <div className="animate-fade-in-up border-t border-[var(--border)] pt-8">
             <CompetitionMap
               overview={result.overview}
               positioning={result.positioning}

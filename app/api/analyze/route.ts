@@ -47,10 +47,18 @@ export async function POST(req: Request) {
     });
   } catch (err) {
     if (err instanceof MissingApiKeyError) {
-      return NextResponse.json({ error: err.message, code: "MISSING_API_KEY" }, { status: 503 });
+      console.error("CompetitorMap: missing API key", err);
+      return NextResponse.json(
+        { error: "This tool isn't fully set up yet — please check back soon.", code: "MISSING_API_KEY" },
+        { status: 503 }
+      );
     }
     if (err instanceof AiProviderError) {
-      return NextResponse.json({ error: err.message, code: "UPSTREAM_ERROR" }, { status: 502 });
+      console.error("CompetitorMap: upstream AI provider error", err);
+      return NextResponse.json(
+        { error: "Something went wrong while mapping the competition. Please try again in a moment.", code: "UPSTREAM_ERROR" },
+        { status: 502 }
+      );
     }
     return NextResponse.json(
       { error: "Couldn't map the competition for that company.", code: "UPSTREAM_ERROR" },

@@ -1,21 +1,14 @@
-import { callGemini } from "./ai/gemini";
-import { callGroq } from "./ai/groq";
-import { callOpenRouter } from "./ai/openrouter";
 import {
   AiProviderError,
   MissingApiKeyError,
-  resolveProvider,
-  type AiProviderName,
+  callAiWithFallback,
   type ChatMessage,
 } from "./ai/provider";
 import type { CompanySnapshot } from "./research";
 import type { CompanyOverview, CompetitorEntry } from "@/types/competitor";
 
 export {
-  resolveProvider,
-  getPreferredProvider,
   getAvailableProviders,
-  providerEnvVar,
   MissingApiKeyError,
   AiProviderError,
 } from "./ai/provider";
@@ -68,17 +61,6 @@ function buildUserPrompt(snapshot: CompanySnapshot): string {
   ]
     .filter(Boolean)
     .join("\n");
-}
-
-async function callProvider(provider: AiProviderName, messages: ChatMessage[]): Promise<string> {
-  switch (provider) {
-    case "gemini":
-      return callGemini(messages);
-    case "groq":
-      return callGroq(messages);
-    case "openrouter":
-      return callOpenRouter(messages);
-  }
 }
 
 function extractJson(text: string): unknown {
@@ -135,18 +117,13 @@ function normalizeCompetitors(raw: unknown): CompetitorEntry[] {
 export async function analyzeCompetition(
   snapshot: CompanySnapshot
 ): Promise<{ overview: CompanyOverview; positioning: string; competitors: CompetitorEntry[]; provider: string }> {
-  const provider = resolveProvider();
-  if (!provider) {
-    throw new MissingApiKeyError("gemini", "GEMINI_API_KEY");
-  }
-
   const messages: ChatMessage[] = [
     { role: "system", content: SYSTEM_PROMPT },
     { role: "user", content: buildUserPrompt(snapshot) },
   ];
 
   try {
-    const rawText = await callProvider(provider, messages);
+    const { text: rawText, provider } = await callAiWithFallback(messages);
     const raw = extractJson(rawText) as Record<string, unknown>;
     const overview = normalizeOverview(raw.overview);
     const positioning = asString(raw.positioning);
@@ -162,6 +139,6 @@ export async function analyzeCompetition(
       throw err;
     }
     const message = err instanceof Error ? err.message : "Something went sideways mapping the market.";
-    throw new AiProviderError(provider, message);
+    throw new AiProviderError(message);
   }
 }
